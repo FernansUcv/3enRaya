@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3 en Raya</title>
+
+    <style>
+        body {
+            display: flex;
+            width: 100%;
+            height: 100%;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        #conexion {
+            background-color: aquamarine;
+            border: 5px solid greenyellow;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 50px;
+        }
+
+        #juego {
+            background-color: lightblue;
+            border: 5px solid blue;
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        #tablero {
+            border: 3px solid black;
+            margin: 10px;
+            padding: 10px;
+        }
+
+        img {
+            border: 3px solid black;
+        }
+    </style>
+</head>
+<body>
+    
+    <h1>3 en Raya</h1>
+
+    <div id="conexion">
+        Conectar
+        <input id="server" value="127.0.0.1" >
+        <button id="conectar">Conectar</button>
+    </div>
+
+    <div id="juego">
+        Juego:<br>
+        <div id="mensaje">...</div>
+        <div id="tablero">
+            <div>
+                <img id="1" src="images/vacio.png" onclick="pulsar(1)" />
+                <img id="2" src="images/vacio.png" onclick="pulsar(2)" />
+                <img id="3" src="images/vacio.png" onclick="pulsar(3)" />
+            </div>
+            <div>
+                <img id="4" src="images/vacio.png" onclick="pulsar(4)" />
+                <img id="5" src="images/vacio.png" onclick="pulsar(5)" />
+                <img id="6" src="images/vacio.png" onclick="pulsar(6)" />
+            </div>
+            <div>
+                <img id="7" src="images/vacio.png" onclick="pulsar(7)" />
+                <img id="8" src="images/vacio.png" onclick="pulsar(8)" />
+                <img id="9" src="images/vacio.png" onclick="pulsar(9)" />
+            </div>
+        </div>
+    </div>
+</body>
+
+<script>
+    // vuestro código va aquí...
+
+    var juego = document.getElementById("juego");
+    juego.style.visibility="hidden";
+
+    var zonaMensajes = document.getElementById("mensaje");
+
+    var ws;
+
+    var imagenes=["images/vacio.png", "images/O.png", "images/X.png"];
+
+    function alerta(data) {
+        //alert(data);
+        zonaMensajes.innerText=data;
+    }
+
+    var botonConectar = document.getElementById("conectar");
+    botonConectar.addEventListener("click", ()=>{
+        // leer que pone en la caja "server"
+        var cajaServer = document.getElementById("server");
+        // conectarme al servidor
+        ws = new WebSocket("ws://"+cajaServer.value+":8080")
+
+        // cuando esté conectado...
+        ws.addEventListener("open",()=>{
+            console.log("Conectado");
+            juego.style.visibility="visible";
+        });
+
+        // si me cierran la conexión
+        ws.addEventListener("close",()=>{
+            console.log("DesConectado");
+            juego.style.visibility="hidden";
+        });
+
+        // cuando me llegue un mensaje desde el server...
+        ws.addEventListener("message", (ev)=>{
+            var mensajeJSON=ev.data.toString();
+            var mensaje=JSON.parse(mensajeJSON);
+            
+            switch(mensaje.tipo) {
+                case "bienvenida":
+                    alerta("Eres el jugador: "+mensaje.datos);
+                    break;
+                case "inicio":
+                    alerta("Empieza la partida");
+                    break;
+                case "tirada":
+                    // encontrar la casilla con el ID. datos.id
+                    var casilla = document.getElementById(mensaje.datos.id);
+                    // cambiarle la imagen
+                    casilla.src=imagenes[mensaje.datos.ficha+1];
+                    break;
+                case "turno":
+                    alerta("Es tu turno");
+                    break;
+                case "fin":
+                    alerta(mensaje.datos);
+                    alert(mensaje.datos);
+                    break;
+                case "vaciar":
+                    for (var i=1;i<10;i++) {
+                        var casilla = document.getElementById(i);
+                        // cambiarle la imagen
+                        casilla.src=imagenes[0];
+                    }
+                    alert("NUEVA PARTIDA");
+                    break;
+                case "error":
+                    alerta("Error: "+mensaje.datos);
+                    break;
+                default:
+                    break;
+            }
+
+        })
+
+    } )
+
+    function pulsar(id) {
+        var mensaje = {
+            tipo: "tirada",
+            datos: {
+                id: id,
+                ficha: 0
+            }
+        }
+        var mensajeJSON = JSON.stringify(mensaje);
+        ws.send(mensajeJSON);
+    }
+
+</script>
+
+</html>
